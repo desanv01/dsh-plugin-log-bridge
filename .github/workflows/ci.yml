@@ -1,0 +1,69 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    name: smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Validate the manifest
+        run: |
+          node -e '
+          const fs = require("fs");
+          const p = JSON.parse(fs.readFileSync("package.json", "utf8"));
+          const problems = [];
+          if (p.private) problems.push("package.json still has private: true");
+          if (!p.name) problems.push("no name");
+          if (!p.version) problems.push("no version");
+          if (!p.license) problems.push("no license");
+          if (!p.repository || !p.repository.url) problems.push("no repository.url");
+          if (!Array.isArray(p.files) || p.files.length === 0) problems.push("no files");
+          for (const f of (p.files || [])) {
+            if (!fs.existsSync(f)) problems.push("listed file does not exist: " + f);
+          }
+          const patch = p.dsh && p.dsh.bundle && p.dsh.bundle.patch;
+          if (patch) {
+            const rel = patch.replace(/^\.\//, "");
+            if (!fs.existsSync(rel)) problems.push("bundle patch does not exist: " + rel);
+            else if (!(p.files || []).includes(rel)) problems.push("bundle patch is NOT in files, so an npm install would not ship it: " + rel);
+          }
+          if (problems.length) { console.error(problems.join("\n")); process.exit(1); }
+          console.log("manifest OK: " + p.name + "@" + p.version);
+          '
+
+      - name: Load the module for real
+        run: |
+          node -e '
+          import("./index.js").then((m) => {
+            if (typeof m.apply !== "function") { console.error("index.js does not export apply()"); process.exit(1); }
+            console.log("loaded: " + (m.name || "(no name export)") + "  exports: " + Object.keys(m).join(", "));
+          }).catch((e) => { console.error(e); process.exit(1); });
+          '
+
+      - name: Pack, and check what actually ships
+        run: |
+          npm pack --pack-destination .
+          tarball=$(ls ./*.tgz)
+          echo "packed: $tarball"
+          tar -tzf "$tarball" | sort
+
+      - name: The patch file must be in the tarball
+        run: |
+          tarball=$(ls ./*.tgz)
+          if tar -tzf "$tarball" | grep -q "package/cordis.patch.yml"; then
+            echo "cordis.patch.yml is in the tarball"
+          else
+            echo "cordis.patch.yml is MISSING from the tarball - an install would ship a plugin with no bundle row"
+            exit 1
+          fi

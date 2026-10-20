@@ -1,0 +1,41 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: The tag must match the manifest version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          manifest=$(node -p "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")
+          echo "tag: $tag   manifest: $manifest"
+          if [ "$tag" != "$manifest" ]; then
+            echo "refusing to release: tag $GITHUB_REF_NAME does not match package.json $manifest"
+            exit 1
+          fi
+
+      - name: Pack
+        run: npm pack --pack-destination .
+
+      - name: Publish the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tarball=$(ls ./*.tgz)
+          gh release create "$GITHUB_REF_NAME" "$tarball" \
+            --title "$GITHUB_REF_NAME" \
+            --generate-notes

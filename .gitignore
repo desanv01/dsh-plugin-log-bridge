@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Logs and local scratch
+*.log
+npm-debug.log*
+.npm-cache/
+plugin-out/
+
+# Packed tarballs
+*.tgz
+
+# Editor and OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

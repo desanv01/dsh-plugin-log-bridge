@@ -1,0 +1,37 @@
+{
+  "name": "dsh-plugin-log-bridge",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Records the DeepSeek Harness's own runtime warnings and errors to stderr, so a boot that fails after startup can say why.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "logging"
+  ],
+  "homepage": "https://github.com/desanv01/dsh-plugin-log-bridge#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/desanv01/dsh-plugin-log-bridge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/desanv01/dsh-plugin-log-bridge/issues"
+  },
+  "main": "index.js",
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "default": "./index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

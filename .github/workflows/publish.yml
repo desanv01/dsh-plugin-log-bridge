@@ -1,0 +1,43 @@
+name: Publish to npm
+
+# Trusted publishing: the runner proves which workflow it is over OpenID Connect,
+# npm exchanges that for a short-lived credential, and the registry records a
+# provenance attestation. No secret is stored anywhere.
+#
+# Prerequisite, and the reason the first publish is not done here: a trusted
+# publisher is configured on the package's own npm settings page, so it cannot
+# exist before the package does. Publish 1.0.0 once with a token or `npm login`,
+# then configure the trusted publisher for this repository and this workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Pack and verify only; do not publish"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Use the current npm
+        run: npm install -g npm@latest
+
+      - name: What would be published
+        run: npm pack --dry-run
+
+      - name: Publish
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --access public --provenance
